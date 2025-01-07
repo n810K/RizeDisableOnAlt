@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Title Modifier Extension",
+  "version": "1.0.0",
+  "description": "Intercepts and modifies webpage titles during annotation creation.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "management"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}
