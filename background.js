@@ -2,7 +2,7 @@
 let rizeExtensionId = null;
 
 // Find Rize's extension ID
-chrome.management.getAll(function(extensions) {
+chrome.management.getAll(function (extensions) {
     const rize = extensions.find(ext => ext.name.toLowerCase().includes('rize'));
     if (rize) {
         rizeExtensionId = rize.id;
