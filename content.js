@@ -1,215 +1,165 @@
-console.log('[Title Cleaner] Script initialized...');
+let isAltPressed = false; // Tracks if Alt key is being pressed
+let isHoveredOverRibbon = false; // Tracks if hovering over the ribbon
+let isRibbonOpen = false; // Tracks if the ribbon is open
+let originalTitle = ''; // Stores the original title before cleaning
 
-let originalTitle = '';
-let isRibbonOpen = false;
-let isAltPressed = false;
-let browserHasFocus = true;
-let ribbonHolder = null;
-
-// Toggle Rize extension
+// Function to toggle the Rize extension
 const toggleRize = async (disable) => {
     try {
         const response = await chrome.runtime.sendMessage({
             action: 'toggleRize',
             disable: disable
         });
-
-        // Log only if response is valid
-        if (response && response.success !== undefined) {
-            console.log(`[Title Cleaner] Toggle Rize ${disable ? 'off' : 'on'} ${response.success ? 'succeeded' : 'failed'}`);
-        } else {
-            console.log(`[Title Cleaner] Toggle Rize ${disable ? 'off' : 'on'}: No success status in response`);
-        }
+        console.log(`[Title Cleaner] Rize ${disable ? 'disabled' : 'enabled'}: `, response.success);
     } catch (error) {
         console.error('[Title Cleaner] Error toggling Rize:', error);
     }
 };
 
-// Reset state and cleanup
-const resetState = async () => {
+// Function to clean the title
+const cleanTitle = () => {
+    if (!originalTitle) originalTitle = document.title; // Save original title only once
+    const cleanedTitle = originalTitle.replace(/ - https?:\/\/.*/, ''); // Remove added URL
+    document.title = cleanedTitle;
+    console.log('[Title Cleaner] ✨ Title cleaned to:', cleanedTitle);
+};
+
+// Function to restore the original title
+const restoreOriginalTitle = () => {
+    if (originalTitle) {
+        document.title = originalTitle; // Restore the original title
+        console.log('[Title Cleaner] ↩️ Title restored to:', originalTitle);
+    }
+};
+
+// Unified function to manage Rize state
+const manageRizeState = async () => {
+    if (isAltPressed || isHoveredOverRibbon || isRibbonOpen) {
+        // Disable Rize when ANY condition is active
+        console.log('[Title Cleaner] 🚨 Disabling Rize (Active condition: Alt/Hover/Ribbon Open)');
+        await toggleRize(true);
+        cleanTitle();
+    } else {
+        // Re-enable Rize ONLY when ALL conditions are cleared
+        console.log('[Title Cleaner] ✅ Enabling Rize (No active conditions)');
+        await toggleRize(false);
+        restoreOriginalTitle();
+    }
+};
+
+// Handle Alt key press
+const handleAltKeyPress = async (event) => {
+    if (event.key === 'Alt' && !isAltPressed) {
+        console.log('[Title Cleaner] 🔑 Alt pressed.');
+        isAltPressed = true;
+        manageRizeState(); // Trigger disable due to Alt key press
+    }
+
+    // Ensure pressing any other key while holding Alt doesn't interfere
     if (isAltPressed) {
-        console.log('[Title Cleaner] 🔄 Resetting state...');
+        console.log(`[Title Cleaner] 🖱️ Holding Alt + ${event.key}`);
+        event.preventDefault(); // Prevent default Alt+key interactions if needed
+    }
+};
+
+// Handle Alt key release
+const handleAltKeyRelease = async (event) => {
+    if (event.key === 'Alt' && isAltPressed) {
+        console.log('[Title Cleaner] 🔑 Alt released.');
         isAltPressed = false;
-        await toggleRize(false);
-        document.title = originalTitle;
-        console.log('[Title Cleaner] ↩️ Title reverted to:', originalTitle);
+        manageRizeState(); // Re-enable if no other conditions are active
     }
 };
 
-// Handle ribbon state changes
+// Handle ribbon hover enter
+const handleRibbonHoverEnter = async () => {
+    if (!isHoveredOverRibbon) {
+        console.log('[Title Cleaner] 🖱️ Hovering over Ribbon: Disabling Rize...');
+        isHoveredOverRibbon = true; // Set hover state to true
+        manageRizeState(); // Trigger Rize disable
+    }
+};
+
+// Handle ribbon hover leave
+const handleRibbonHoverLeave = async () => {
+    if (isHoveredOverRibbon) {
+        console.log('[Title Cleaner] 🖱️ Stopped hovering over Ribbon.');
+        isHoveredOverRibbon = false; // Set hover state to false
+        manageRizeState(); // Re-enable if no other conditions are active
+    }
+};
+
+// Handle ribbon open (e.g., clicking on ribbon)
 const handleRibbonOpen = async () => {
-    if (!isRibbonOpen) {
-        originalTitle = document.title;
-        console.log('[Title Cleaner] Original title stored:', originalTitle);
-
-        const cleanedTitle = document.title.replace(/ - https?:\/\/.*/, '');
-        document.title = cleanedTitle;
-        console.log('[Title Cleaner] ✨ Cleaned title to:', cleanedTitle);
-
-        isRibbonOpen = true;
-
-        // Disable Rize when ribbon opens
-        await toggleRize(true);
-    }
+    console.log('[Title Cleaner] 🟢 Ribbon opened.');
+    isRibbonOpen = true; // Set ribbon open state
+    manageRizeState(); // Trigger Rize disable
 };
 
+// Handle ribbon close
 const handleRibbonClose = async () => {
-    if (isRibbonOpen) {
-        document.title = originalTitle;
-        console.log('[Title Cleaner] ↩️ Restored original title:', originalTitle);
-
-        isRibbonOpen = false;
-
-        // Re-enable Rize when ribbon closes
-        await toggleRize(false);
-    }
+    console.log('[Title Cleaner] 🔴 Ribbon closed.');
+    isRibbonOpen = false; // Clear ribbon open state
+    manageRizeState(); // Re-enable if no other conditions are active
 };
 
-// Detect hover events
-const setupHoverDetection = (ribbonHolder) => {
-    console.log('[Title Cleaner] Setting up hover detection...');
-
+// Observe the ribbon holder for hover and open/close events
+const observeRibbon = (ribbonHolder) => {
+    // Observe for ribbon hover events
     const iconContainer = ribbonHolder.querySelector('[class*="IconContainer"]');
-    if (!iconContainer) {
-        console.error('[Title Cleaner] IconContainer not found inside ribbon holder.');
-        return;
+    if (iconContainer) {
+        console.log('[Title Cleaner] 🖱️ Setting up hover detection for Ribbon...');
+        iconContainer.addEventListener('mouseenter', handleRibbonHoverEnter);
+        iconContainer.addEventListener('mouseleave', handleRibbonHoverLeave);
     }
 
-    // Add hover listeners
-    iconContainer.addEventListener('mouseenter', async () => {
-        console.log('[Title Cleaner] 🖱️ Hover entered IconContainer! Disabling Rize...');
-        await toggleRize(true);
-    });
-
-    iconContainer.addEventListener('mouseleave', async () => {
-        console.log('[Title Cleaner] 🖱️ Hover exited IconContainer! Re-enabling Rize...');
-        await toggleRize(false);
-    });
-
-    console.log('[Title Cleaner] Hover detection initialized.');
-};
-
-// Observe ribbon holder for changes
-const observeRibbonHolder = (ribbonHolder) => {
-    console.log('[Title Cleaner] Starting to observe ribbon holder...');
-
+    // Observe for ribbon open/close events
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
-            mutation.addedNodes.forEach(async (node) => {
+            mutation.addedNodes.forEach((node) => {
                 if (node.nodeType === Node.ELEMENT_NODE && node.className.includes('InnerRibbon')) {
-                    console.log('[Title Cleaner] Ribbon opened! Handling...');
-                    await handleRibbonOpen();
+                    handleRibbonOpen(); // Trigger when ribbon opens
                 }
             });
-
-            mutation.removedNodes.forEach(async (node) => {
+            mutation.removedNodes.forEach((node) => {
                 if (node.nodeType === Node.ELEMENT_NODE && node.className.includes('InnerRibbon')) {
-                    console.log('[Title Cleaner] Ribbon closed! Handling...');
-                    await handleRibbonClose();
+                    handleRibbonClose(); // Trigger when ribbon closes
                 }
             });
         });
     });
 
-    observer.observe(ribbonHolder, {
-        childList: true,
-        subtree: true,
-        attributes: true
-    });
-
-    setupHoverDetection(ribbonHolder); // Add hover detection to ribbon
-    console.log('[Title Cleaner] Observer setup complete.');
+    observer.observe(ribbonHolder, { childList: true, subtree: true });
 };
 
-// Retry detection for ribbon holder in Shadow DOM
+// Retry ribbon detection if not immediately available
 const retryFindRibbon = () => {
-    console.log('[Title Cleaner] Attempting to find ribbon in shadow DOM...');
-
-    const container = document.querySelector('#memex-ribbon-container');
-    if (!container) {
-        console.log('❌ Ribbon container not found. Retrying...');
-        setTimeout(retryFindRibbon, 500);
+    console.log('[Title Cleaner] 🔍 Searching for Ribbon...');
+    const ribbonContainer = document.querySelector('#memex-ribbon-container');
+    if (!ribbonContainer || !ribbonContainer.shadowRoot) {
+        setTimeout(retryFindRibbon, 500); // Retry after 500ms
         return;
     }
 
-    const shadowRoot = container.shadowRoot;
-    if (!shadowRoot) {
-        console.log('❌ Shadow root not found. Retrying...');
-        setTimeout(retryFindRibbon, 500);
-        return;
-    }
-
-    const memexRibbon = shadowRoot.querySelector('#memex-ribbon');
-    if (!memexRibbon) {
-        console.log('❌ Memex ribbon not found in shadow root. Retrying...');
-        setTimeout(retryFindRibbon, 500);
-        return;
-    }
-
-    ribbonHolder = memexRibbon.querySelector('#memex-ribbon-holder');
-    if (!ribbonHolder) {
-        console.log('❌ Ribbon holder not found in memex ribbon. Retrying...');
-        setTimeout(retryFindRibbon, 500);
-        return;
-    }
-
-    console.log('✅ Ribbon holder found in shadow DOM.');
-    observeRibbonHolder(ribbonHolder); // Start observing the ribbon holder
-};
-
-// Alt key handling
-const handleAltKey = async (event) => {
-    if (event.key === 'Alt' && event.code === 'AltLeft' && !isAltPressed) {
-        console.log('[Title Cleaner] 🎯 Left Alt key pressed!');
-
-        isAltPressed = true;
-        originalTitle = document.title;
-
-        await toggleRize(true);
-
-        const cleanedTitle = document.title.replace(/ - https?:\/\/.*/, '');
-        document.title = cleanedTitle;
-        console.log('[Title Cleaner] ✨ Title cleaned to:', cleanedTitle);
-
-        event.preventDefault();
+    const ribbonHolder = ribbonContainer.shadowRoot.querySelector('#memex-ribbon-holder');
+    if (ribbonHolder) {
+        console.log('[Title Cleaner] ✅ Ribbon found. Initializing observation...');
+        observeRibbon(ribbonHolder); // Attach hover and click observers
+    } else {
+        setTimeout(retryFindRibbon, 500); // Retry if ribbon holder not found
     }
 };
 
-const handleAltKeyRelease = async (event) => {
-    if (event.key === 'Alt' && isAltPressed) {
-        console.log('[Title Cleaner] 🔄 Left Alt key released!');
-        await resetState();
-    }
-};
-
-// Window focus/blur handling
-const handleWindowBlur = async () => {
-    console.log('[Title Cleaner] 👻 Window lost focus');
-    browserHasFocus = false;
-    await resetState();
-};
-
-const handleWindowFocus = () => {
-    console.log('[Title Cleaner] 👀 Window regained focus');
-    browserHasFocus = true;
-};
-
-// Initialize script
+// Initialize the extension functionality
 const initialize = () => {
     console.log('[Title Cleaner] 🚀 Initializing...');
-
-    window.addEventListener('keydown', handleAltKey);
+    // Add event listeners for Alt key
+    window.addEventListener('keydown', handleAltKeyPress);
     window.addEventListener('keyup', handleAltKeyRelease);
-    window.addEventListener('blur', handleWindowBlur);
-    window.addEventListener('focus', handleWindowFocus);
 
-    retryFindRibbon(); // Start looking for ribbon holder
-    console.log('[Title Cleaner] Initialization complete.');
+    // Start looking for ribbon
+    retryFindRibbon();
 };
 
-// DOM-ready check
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initialize);
-} else {
-    initialize();
-}
+// Start the script
+initialize();
