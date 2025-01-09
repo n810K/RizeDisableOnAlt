@@ -169,38 +169,14 @@ const retryFindRibbon = () => {
     }
 };
 
-/**
- * NEW FUNCTIONALITY: Clean the previous tab's title when switching tabs
- */
-const handleTabSwitch = () => {
-    let previousTitle = ''; // Store the previous title temporarily
-
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            console.log('[Title Cleaner] 📑 Tab became hidden');
-            // Save the current title before cleaning it
-            previousTitle = document.title;
-            cleanTitle(); // Clean the title when the tab becomes hidden
-        } else {
-            console.log('[Title Cleaner] 👀 Tab became visible');
-            // Restore the previous title if switching back
-            if (previousTitle) {
-                document.title = previousTitle;
-                previousTitle = ''; // Clear it after restoring
-            }
-        }
-    });
-};
-
 // Initialize
 const initialize = () => {
     console.log('[Title Cleaner] 🚀 Initializing...');
-    window.addEventListener('blur', handleWindowBlur); // Existing functionality
-    window.addEventListener('focus', handleWindowFocus); // Existing functionality
-    window.addEventListener('keydown', handleAltKeyPress); // Existing functionality
-    window.addEventListener('keyup', handleAltKeyRelease); // Existing functionality
-    retryFindRibbon(); // Existing functionality
-    handleTabSwitch(); // NEW FUNCTIONALITY
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('keydown', handleAltKeyPress);
+    window.addEventListener('keyup', handleAltKeyRelease);
+    retryFindRibbon();
 };
 
 // Start the script
