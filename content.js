@@ -1,38 +1,44 @@
 // Global state
-let originalTitle = document.title;
+let originalTitle = ""; // This will dynamically track the "real" title.
 let isAltPressed = false;
 let isHoveredOverRibbon = false;
 
 // Initialize
 const initialize = () => {
-    // Save initial clean title
-    originalTitle = document.title;
+    // Delay saving the initial title to wait for potential dynamic title changes
+    setTimeout(() => {
+        originalTitle = document.title; // Capture the final dynamic title the site sets
+    }, 50); // 50ms delay (adjust if needed for slower sites)
 
     // Set up event listeners
     window.addEventListener('keydown', handleAltKeyPress);
     window.addEventListener('keyup', handleAltKeyRelease);
     window.addEventListener('blur', handleWindowBlur);
     window.addEventListener('focus', handleWindowFocus);
-    
-    // Handle navigation
+
+    // Watch for navigation/title changes
     const observer = new MutationObserver(() => {
-        originalTitle = document.title.split(' - ')[0];
+        // Capture the dynamic title set by the site (before making any changes)
+        if (!document.title.includes(' - ')) {
+            originalTitle = document.title; // Safeguard dynamic title
+        }
+
+        // Ensure we append the URL correctly if conditions are met
         if (!isAltPressed && !isHoveredOverRibbon) {
-            appendUrlToTitle();
+            handleDelayedUrlAppend();
         }
     });
-    
     observer.observe(document.querySelector('title') || document.head, {
         subtree: true,
         characterData: true,
-        childList: true
+        childList: true,
     });
 
-    // Find and set up ribbon
-    retryFindRibbon();
+    // Initial delayed URL append
+    handleDelayedUrlAppend();
 
-    // Initial URL append
-    appendUrlToTitle();
+    // Retry ribbon setup
+    retryFindRibbon();
 };
 
 // Core title functions
@@ -45,6 +51,16 @@ const appendUrlToTitle = () => {
 
 const resetTitle = () => {
     document.title = originalTitle;
+};
+
+// Delayed URL append (after page is added to history)
+const handleDelayedUrlAppend = () => {
+    // Small timeout to ensure that the page is in browser history
+    setTimeout(() => {
+        if (!isAltPressed && !isHoveredOverRibbon) {
+            appendUrlToTitle();
+        }
+    }, 250); // Delay can be adjusted if the appending is too early
 };
 
 // Event handlers
@@ -67,7 +83,7 @@ const handleWindowBlur = () => {
 };
 
 const handleWindowFocus = () => {
-    appendUrlToTitle();
+    handleDelayedUrlAppend();
 };
 
 // Ribbon functionality
@@ -77,17 +93,15 @@ const retryFindRibbon = () => {
         setTimeout(retryFindRibbon, 500);
         return;
     }
-
     const ribbonHolder = ribbonContainer.shadowRoot.querySelector('#memex-ribbon-holder');
     if (ribbonHolder) {
         ribbonHolder.addEventListener('mouseenter', () => {
             isHoveredOverRibbon = true;
             resetTitle();
         });
-
         ribbonHolder.addEventListener('mouseleave', () => {
             isHoveredOverRibbon = false;
-            appendUrlToTitle();
+            handleDelayedUrlAppend();
         });
     }
 };
