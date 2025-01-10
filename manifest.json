@@ -1,11 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "Append URL to Title",
-  "version": "1.2",
-  "description": "Automatically appends the current page's URL to the title.",
-  "permissions": ["scripting", "activeTab", "webNavigation"],
+  "name": "Title Modifier",
+  "version": "1.0",
+  "description": "Changes page title dynamically, toggling with Alt key and Memex ribbon hover.",
+  "permissions": ["scripting", "activeTab"],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
   },
-  "host_permissions": ["<all_urls>"]
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
 }
