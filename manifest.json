@@ -1,13 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Title Cleaner",
-  "version": "1.0",
-  "description": "Removes the appended URL from the webpage title and restores the original title.",
-  "permissions": [],
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
-    }
-  ]
+  "name": "Append URL to Title",
+  "version": "1.2",
+  "description": "Automatically appends the current page's URL to the title.",
+  "permissions": ["scripting", "activeTab", "webNavigation"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": ["<all_urls>"]
 }
