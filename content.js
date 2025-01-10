@@ -39,7 +39,7 @@ const initialize = () => {
 const appendUrlToTitle = () => {
     const currentUrl = window.location.href;
     if (!document.title.includes(' - ' + currentUrl)) {
-        document.title = `${ originalTitle } - ${ currentUrl }`;
+        document.title = `${originalTitle} - ${currentUrl}`;
     }
 };
 
@@ -51,28 +51,41 @@ const resetTitle = () => {
 const handleAltKeyPress = (event) => {
     if (event.key === 'Alt' && !isAltPressed) {
         isAltPressed = true;
-        resetTitle();
+        resetTitle(); // Clean title when Alt is pressed
     }
 };
 
 const handleAltKeyRelease = (event) => {
     if (event.key === 'Alt' && isAltPressed) {
         isAltPressed = false;
-        appendUrlToTitle();
+
+        // PRIORITY: Ribbon hover state takes precedence
+        if (isHoveredOverRibbon) {
+            resetTitle(); // Keep clean title if hovering
+        } else {
+            appendUrlToTitle(); // Otherwise, append the URL
+        }
     }
 };
 
 const handleWindowBlur = () => {
-    resetTitle();
+    isAltPressed = false;
+    resetTitle(); // Always reset title when losing focus
 };
 
 const handleWindowFocus = () => {
-    appendUrlToTitle();
+    isAltPressed = false;
+    if (!isHoveredOverRibbon) {
+        appendUrlToTitle(); // Append URL if not hovering
+    } else {
+        resetTitle(); // Keep clean title if hovering
+    }
 };
 
 // Ribbon functionality
 const retryFindRibbon = () => {
     const ribbonContainer = document.querySelector('#memex-ribbon-container');
+
     if (!ribbonContainer || !ribbonContainer.shadowRoot) {
         setTimeout(retryFindRibbon, 500);
         return;
@@ -82,12 +95,16 @@ const retryFindRibbon = () => {
     if (ribbonHolder) {
         ribbonHolder.addEventListener('mouseenter', () => {
             isHoveredOverRibbon = true;
-            resetTitle();
+            resetTitle(); // Keep clean title when hovering
         });
 
         ribbonHolder.addEventListener('mouseleave', () => {
             isHoveredOverRibbon = false;
-            appendUrlToTitle();
+
+            // ONLY append URL when Alt is NOT pressed
+            if (!isAltPressed) {
+                appendUrlToTitle();
+            }
         });
     }
 };
