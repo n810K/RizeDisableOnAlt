@@ -1,16 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Title Modifier Extension",
-  "version": "1.0.0",
-  "description": "Intercepts and modifies webpage titles during annotation creation.",
-  "permissions": [
-    "activeTab",
-    "scripting",
-    "management"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
+  "name": "Title Cleaner",
+  "version": "1.0",
+  "description": "Removes the appended URL from the webpage title and restores the original title.",
+  "permissions": [],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
