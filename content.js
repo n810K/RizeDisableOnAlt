@@ -16,7 +16,18 @@ const initialize = () => {
 
     // Handle navigation
     const observer = new MutationObserver(() => {
-        originalTitle = document.title.split(' - ')[0];
+        // Only update originalTitle if the current title doesn't contain our URL
+        const currentUrl = window.location.href;
+        const currentTitle = document.title;
+        
+        if (currentTitle.includes(' - ' + currentUrl)) {
+            // Title contains our URL, extract the original part
+            originalTitle = currentTitle.replace(' - ' + currentUrl, '');
+        } else {
+            // Title doesn't contain our URL, so this is likely the natural page title
+            originalTitle = currentTitle;
+        }
+        
         if (!isAltPressed && !isHoveredOverRibbon) {
             appendUrlToTitle();
         }
